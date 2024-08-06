@@ -1,61 +1,59 @@
 import cvxpy as cp
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Constants
-VTO = 0.5 # Threshold voltage
-KP = 50e-6   # Transconductance parameter (μnCox)
-Cox = 2.3e-3
-mu_n = KP/Cox #Mobility in m^2/Vs
+# Constants and assumptions for 1um technology
+L = 1e-6  # Channel length (m)
+CL = 1e-12  # Load capacitance (F)
 
-# Given parameters
-Rs = 10e3  # Source resistance in Ohms
-RD = 5e3  # Drain resistance in Ohms
-CL = 1e-12  # Load capacitance in Farads
+VTO = 0.5  # Threshold voltage in Volts
+KP = 50e-6  # Transconductance parameter in A/V^2
+Cox = 2.3e-3  # Oxide capacitance per unit area in F/m^2
+mu_n = KP / Cox  # Mobility in m^2/Vs
+RS = 10e3 # Source resistance resistance (Ω)
+VoV = 0.2
 
 
-# Create optimization variables
-L = cp.Variable(pos=True)  # Width of the transistor
-VOV = cp.Variable(pos=True) # Gate-source voltage
+# Define the optimization variable
+W = cp.Variable(pos=True)
 
-# Specification 
-ID = 500e-6
-AV = 4
+# Define expressions for our metrics
+gain = 4
+gm = mu_n * Cox * (W/L) * VoV
+Rout = gain/gm
+Cgs = 2/3 * Cox * W * L
+f3db = 1 / (2 * np.pi * (Cgs*RS + CL*Rout))
+Id = 0.5 * mu_n * Cox * (W/L) * VoV**2
+# Id = gm * VoV / 2
 
-W = AV * L  / (RD * mu_n * VOV * Cox)
-Rout = RD
-omega_3dB = 1 / (((2/3)*cp.square(L)*AV*Rs/(RD*mu_n*VOV)) + AV*CL*VOV/(2*ID))
+#Contraint on the minimum f3db
+f3db_min = 10e6
 
-# Calculate open-circuit time constants (OCT)
+# Define the objective function
+objective_fn = f3db
 
-objective_fn = ((omega_3dB))
-
+# Define constraints
 constraints = [
-    L >= 1e-6,  
-    L <= 4e-6,
-    VOV >= 100e-3, 
-    VOV <= 0.9,
+    W >= 1e-6,  # Minimum width of 1 µm
+    W <= 500e-6,  # Maximum width of 800 µm
+    f3db >= f3db_min,  # Minimum f3db 
+
 ]
 
-# Define the problem and solve
+# Set up and solve the problem
 assert objective_fn.is_log_log_concave()
-
 assert all(constraint.is_dgp() for constraint in constraints)
-
 problem = cp.Problem(cp.Maximize(objective_fn), constraints)
-
-
-print(problem)
 print("Is this problem DGP?", problem.is_dgp())
-
-problem.solve(gp=True) # Solve with DCP
+problem.solve(gp=True)  # Solve with geometric programming
 print("Status:", problem.status)
-
-
 
 # Print results
-print("Status:", problem.status)
-print("Optimal omega_3dB:", problem.value)
-print("Optimal W:", W.value)
-print("Optimal L:", L.value)
-print("Optimal VOV:", VOV.value)
-print("Optimal gm:", 2*ID/VOV.value)
+print(f"Optimal W: {W.value*1e6:.2f} µm")
+print(f"Optimal gm: {gm.value:.2e} S")
+print(f"f3db: {f3db.value/1e6:.2f} MHz")
+print(f"Gain: {20*np.log10(gm.value*Rout.value):.2f} dB")
+print(f"Id: {Id.value*1e3:.2f} mA")
+print(f"Rout: {Rout.value*1e-3:.2f} kOhm")
+print(f"Tout: {CL*Rout.value*1e12:.2f} ns")
+print(f"Tin: {RS*Cgs.value*1e12:.2f} ns")
