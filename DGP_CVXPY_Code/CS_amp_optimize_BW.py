@@ -1,6 +1,5 @@
 import cvxpy as cp
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Constants and assumptions for 1um technology
 L = 1e-6  # Channel length (m)
@@ -9,7 +8,7 @@ KP = 50e-6  # Transconductance parameter (A/V^2)
 Cox = 2.3e-3  # Oxide capacitance per unit area (F/m^2)
 mu_n = KP / Cox  # Mobility (m^2/Vs)
 
-#Design Variablea
+# Design Variable
 RS = 10e3 # Source resistance (Ω)
 Vov = 0.2 # Overdrive voltage (Volts)
 CL = 1e-12  # Load capacitance (F)
