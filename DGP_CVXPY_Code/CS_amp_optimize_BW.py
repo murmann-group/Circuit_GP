@@ -4,30 +4,26 @@ import matplotlib.pyplot as plt
 
 # Constants and assumptions for 1um technology
 L = 1e-6  # Channel length (m)
-CL = 1e-12  # Load capacitance (F)
+VTO = 0.5  # Threshold voltage (Volts)
+KP = 50e-6  # Transconductance parameter (A/V^2)
+Cox = 2.3e-3  # Oxide capacitance per unit area (F/m^2)
+mu_n = KP / Cox  # Mobility (m^2/Vs)
 
-VTO = 0.5  # Threshold voltage in Volts
-KP = 50e-6  # Transconductance parameter in A/V^2
-Cox = 2.3e-3  # Oxide capacitance per unit area in F/m^2
-mu_n = KP / Cox  # Mobility in m^2/Vs
+#Design Variablea
 RS = 10e3 # Source resistance (Ω)
-VoV = 0.2
-
+Vov = 0.2 # Overdrive voltage (Volts)
+CL = 1e-12  # Load capacitance (F)
+gain = 4
 
 # Define the optimization variable
-W = cp.Variable(pos=True)
+W = cp.Variable(pos=True)  
 
-# Define expressions for our metrics
-gain = 4
-gm = mu_n * Cox * (W/L) * VoV
+# Define expressions  
+gm = mu_n * Cox * (W/L) * Vov
 Rout = gain/gm
 Cgs = 2/3 * Cox * W * L
-f3db = 1 / (2 * np.pi * (Cgs*RS + CL*Rout))
-Id = 0.5 * mu_n * Cox * (W/L) * VoV**2
-
-
-#constraint on the minimum f3db
-f3db_min = 10e6
+f3db = 1 / (2 * np.pi * (Cgs * RS + CL * Rout))
+Id = 0.5 * mu_n * Cox * (W/L) * Vov**2
 
 # Define the objective function
 objective_fn = f3db
@@ -36,7 +32,6 @@ objective_fn = f3db
 constraints = [
     W >= 1e-6,   
     W <= 500e-6, 
-    f3db >= f3db_min, 
 ]
 
 # Set up and solve the problem
@@ -54,5 +49,5 @@ print(f"f3db: {f3db.value/1e6:.2f} MHz")
 print(f"Gain: {gm.value*Rout.value:.2f} ")
 print(f"Id: {Id.value*1e3:.3f} mA")
 print(f"Rout: {Rout.value*1e-3:.3f} kOhm")
-print(f"Tout: {CL*Rout.value*1e9:.4f} ns")
-print(f"Tin: {RS*Cgs.value*1e9:.4f} ns")
+print(f"Tout: {CL*Rout.value*1e9:.3f} ns")
+print(f"Tin: {RS*Cgs.value*1e9:.3f} ns")
